@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>Text Recognition Program</title>
+    <!-- Write CSS Here -->
+</head>
+<body>
+    <div class="card text-center">
+        <div class="card-header">
+            <h5 style="font-weight: bolder;">OCR-(Upload Image & Open Camera)-Recognize Text inside the Image</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group actions">
+                <h6>Please Select Any One Option:-</h6>
+                <a href="/" class="btn btn-success image_upload">Upload</a>
+                <a href="/capture-image" class="btn btn-primary camera"><i class="bi bi-check-circle checked"></i>Camera</a>
+            </div>
+            <div class="form-group">
+                <div class="row" id="open_camera_area">
+                    <div class="col-md-5">
+                        <div class="form-group" id="camera_status">
+                            <h5 class="card-title" style="font-weight: bolder;  color: blue;">Text Recognition through Camera</h5>
+                            <span id="camera_success"><%=success2%></span><br>
+                            <span id="camera_error"><%=error2%></span><br>
+                        </div>
+                        <div class="form-group" id="camera_area">
+                            <video id="vedio_camera" width="500" height="400" autoplay></video>
+                            <canvas id="canvas" width="500", height="400" hidden></canvas>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn btn-primary" id="take_picture" onclick="take_Picture()">Take Picture</button>
+                            <button type="button" class="btn btn-warning" id="retake_picture"onclick="retake_picture()" hidden>Retake Picture</button>
+                            <button type="button" class="btn btn-danger" id="stop_webcam" onclick="stop_streaming()">Stop Streaming</button>
+                            <button type="button" class="btn btn-success" id="start_webcam" onclick="start_streaming()" hidden>Start Streaming</button>
+                        </div>
+                        <div class="form-group">
+                            <form action="/recognize-text-captured-image" method="POST" enctype="multipart/form-data">
+                                <input type="file" id="captured_image" name="captured_image" accept="image/*" hidden>
+                                <button type="submit" id="camera_recognize_text">Recognize Text</button> 
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-7 output_area_camera" id="output_area_camera">
+                        <h5>Recognized Text From Image</h5>
+                        <textarea class="output_text_camera" id="output_text_camera" cols="108" rows="23">
+                            <%=data2%>
+                        </textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script defer>
+
+            let vedio_camera = document.getElementById('vedio_camera');
+            if(navigator.mediaDevices.getUserMedia){
+                navigator.mediaDevices.getUserMedia({video:true})
+                .then(function(stream){
+                    vedio_camera.srcObject = stream;
+                    // document.getElementById('camera_success').innerHTML = "Camera Access Successfully..";
+                    console.log("Camera Access Successfully!");
+                })
+                .catch(function(stream_error){
+                    console.log("Camera Access Permission Denied!"+stream_error);
+                    document.getElementById('camera_error').innerHTML = "Camera Access Permission Denied!"+stream_error;
+                })
+
+            }else{
+                console.log("Camera Unable to Access! Please try again..");
+                document.getElementById('camera_error').innerHTML = "Camera Unable to Access! Please try again..";
+            }
+
+    </script>
+    <script>
+        function take_Picture(){
+            let canvas = document.querySelector("#canvas");
+            let context = canvas.getContext("2d");
+            let video = document.querySelector("#vedio_camera");
+
+                document.getElementById('take_picture').addEventListener('click', function(){
+                    context.drawImage(video, 0,0,500,400);
+
+                    canvas.toBlob( (blob) =>{
+                        const file = new File( [ blob ], "mycanvas.png" );
+                        const dT = new DataTransfer();
+                        dT.items.add( file );
+                        document.querySelector( "#captured_image" ).files = dT.files;
+
+                        // const view_image = document.querySelector( "#captured_image" ).files[ 0 ];
+                        //     document.body.appendChild( new Image() )
+                        //     .src = URL.createObjectURL( view_image );
+                    });
+                    if(vedio_camera.srcObject != null ){
+                        const stream = vedio_camera.srcObject;
+                        const track = stream.getTracks()[0];
+                        track.stop();
+                        video.srcObject = null;
+                        if(video.srcObject == null){
+                            $('#stop_webcam').attr('hidden',true);
+                            $('#start_webcam').removeAttr('hidden',false);
+                            $('#vedio_camera').attr('hidden',true);
+                            $('#canvas').removeAttr('hidden',false);
+                            $('#take_picture').attr('hidden',true);
+                            $('#retake_picture').removeAttr('hidden',false);
+
+                            document.getElementById('camera_success').innerHTML = 'Picture Captured Successfully!';
+                            document.getElementById('camera_error').innerHTML = '';
+                        }
+                    }else{
+                        document.getElementById('camera_success').innerHTML = '';
+                        document.getElementById('camera_error').innerHTML = 'Please Turn On Your Camera! Press Start Streaming Button';
+                    }
+                });
+        }
+
+        function retake_picture(){
+            $('#retake_picture').attr('hidden',true);
+            $('#take_picture').removeAttr('hidden',false);
+            start_streaming();
+        }
+
+        function start_streaming(){
+
+            let vedio_camera = document.getElementById('vedio_camera');
+            if(navigator.mediaDevices.getUserMedia){
+                navigator.mediaDevices.getUserMedia({video:true})
+                .then(function(stream){
+
+                    vedio_camera.srcObject = stream;
+
+                    $('#start_webcam').attr('hidden',true);
+                    $('#canvas').attr('hidden',true);
+                    $('#stop_webcam').removeAttr('hidden',false);
+                    $('#stop_camera_heading').attr('hidden',true);
+                    $('#camera_pic').remove();
+                    $('#vedio_camera').removeAttr('hidden',false);
+
+                    document.getElementById('camera_error').innerHTML = '';
+                    document.getElementById('camera_success').innerHTML = "Camera Streaming Turn ON!";
+                    console.log("Camera Streaming Turn ON!");
+                })
+                .catch(function(stream_error){
+                    console.log("Camera Streaming is not Turn On! Please try again..."+stream_error);
+                    document.getElementById('camera_error').innerHTML = "Camera Streaming is not Turn On! Please try again..."+stream_error;
+                })
+
+            }else{
+                console.log("Camera Streaming is not Turn On! Please try again...");
+                document.getElementById('camera_error').innerHTML = "Camera Streaming is not Turn On! Please try again...";
+            }
+        }
+
+        function stop_streaming(){
+
+            let vedio_camera = document.getElementById('vedio_camera');
+            const stream = vedio_camera.srcObject;
+            const track = stream.getTracks()[0];
+            track.stop();
+            vedio_camera.srcObject = null;
+            if(vedio_camera.srcObject == null){
+
+                $('#stop_webcam').attr('hidden',true);
+                $('#start_webcam').removeAttr('hidden',false);
+                $('#vedio_camera').attr('hidden',true);
+                $('#camera_area').append('<i id="camera_pic" class="bi bi-camera-fill"></i>');
+                
+                document.getElementById('camera_success').innerHTML = '';
+                document.getElementById('camera_error').innerHTML = 'Camera Streaming Turn Off';
+            }
+            console.log('Camera Streaming Off');
+        }
+
+    </script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>
+
+
